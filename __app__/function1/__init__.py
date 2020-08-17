@@ -1,8 +1,8 @@
 import azure.functions
 import logging
 
-async def main(req: azure.functions.HttpRequest) -> azure.fubctions.HttpResponse:
+async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse:
     try:
-        return azure.fubctions.HttpResponse('hello world')
+        return azure.functions.HttpResponse('hello world')
     except:
         logging.except("return failed")
