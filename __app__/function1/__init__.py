@@ -1,5 +1,4 @@
 import azure.functions
 
-async def main(req: azure.functions.HttpRequest) -> str:
-    return azure.fubctions.HttpReqonse('hello world')
-
+async def main(req: azure.functions.HttpRequest) -> azure.fubctions.HttpResponse:
+    return azure.fubctions.HttpResponse('hello world')
