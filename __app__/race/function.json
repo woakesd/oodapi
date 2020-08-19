@@ -12,7 +12,7 @@
                 "post",
 		"put"
             ],
-            "route": "function1/{*rid}"
+            "route": "race/{*rid}"
         },
         {
             "type": "http",
