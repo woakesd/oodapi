@@ -1,3 +1,4 @@
+azure-functions
 aiomysql==0.0.20
 cffi==1.14.2
 cryptography==3.0
