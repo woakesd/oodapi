@@ -21,14 +21,11 @@ async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse
         logging.info(rid)
         conn_string = os.environ['dbconnection']
         args = mysql_connection_details(conn_string)
-        pool = await aiomysql.create_pool(**args)
-        async with pool.acquire() as conn:
+        async with aiomysql.connect(**args) as conn:
             async with conn.cursor() as cur:
                 await cur.execute('select * from races_new where rid = %s', rid) 
                 columns = [column[0] for column in cur.description]
                 r = [dict(zip(columns, r)) for r in await cur.fetchall()]
-        pool.close()
-        await pool.wait_closed()
         return azure.functions.HttpResponse(dumps(r, default=str))
     except Exception as e:
         logging.error(f"return failed, {e}")
