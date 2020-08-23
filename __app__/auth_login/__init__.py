@@ -30,15 +30,15 @@ async def login(name: str, password: str) -> dict:
             await cur.execute('select hex(id), salt, pass from user where name = %s', name) 
             id, salt, passhash = await cur.fetchone()
     if passhash != b64encode(scrypt.hash(password, salt, buflen=96)).decode('utf-8'):
-        return { 'error': 'user or password not recognized', 'auth': False }
-    return { 'auth': True, 'sub': f'{id[:8]}-{id[8:12]}-{id[12:16]}-{id[16:20]}-{id[20:]}' }
+        return False, { 'error': 'user or password not recognized' }
+    return True, { 'sub': f'{id[:8]}-{id[8:12]}-{id[12:16]}-{id[16:20]}-{id[20:]}' }
  
 async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse:
     try:
         body = req.get_json()
         logging.info(f'Got body {body}')
-        ident = await login(body['name'], body['pass'])
-        if not ident['auth']:
+        auth, ident = await login(body['name'], body['pass'])
+        if not auth:
             return azure.functions.HttpResponse(dumps(ident, default=str), status_code=401)
         ident['name'] = body['name']    
         ident['iss'] = 'oodapi'
