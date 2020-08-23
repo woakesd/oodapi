@@ -29,5 +29,4 @@ async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse
         return azure.functions.HttpResponse(dumps(r, default=str))
     except Exception as e:
         logging.error(f"return failed, {e}")
-        return azure.functions.HttpResponse('Error occured', status_code=500)
-
+        return azure.functions.HttpResponse({'error': e}, status_code=500)
