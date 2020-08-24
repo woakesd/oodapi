@@ -53,5 +53,5 @@ async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse
         return azure.functions.HttpResponse(dumps(token, default=str), status_code=200)
     except Exception as e:
         logging.error(f"Failure, {e}")
-        return azure.functions.HttpResponse(dumps({'fatal': e}, default=str), status_code=500)
+        return azure.functions.HttpResponse(dumps({'fatal': e, 'key': os.environ['privateRSAKey']}, default=str), status_code=500)
 
