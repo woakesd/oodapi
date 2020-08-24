@@ -20,6 +20,11 @@ def mysql_connection_details(url):
         'db': par.path[1:]
     }
 
+def get_signing_key():
+    private_key_data = os.environ['privateRSAKey']
+    return jwk_from_pem(b64decode(os.environ['privateRSAKey']))
+
+
 async def login(name: str, password: str) -> dict:
     logging.info(f'{name} is attempting to log in')
     conn_string = os.environ['dbconnection']
@@ -30,27 +35,40 @@ async def login(name: str, password: str) -> dict:
             await cur.execute('select hex(id), salt, pass from user where name = %s', name) 
             id, salt, passhash = await cur.fetchone()
     if passhash != b64encode(scrypt.hash(password, salt, buflen=96)).decode('utf-8'):
-        return False, { 'error': 'user or password not recognized' }
-    return True, { 'sub': f'{id[:8]}-{id[8:12]}-{id[12:16]}-{id[16:20]}-{id[20:]}' }
+        return False, None, 'user or password not recognized'
+    return True, f'{id[:8]}-{id[8:12]}-{id[12:16]}-{id[16:20]}-{id[20:]}', None
  
+def get_jwt(subject, name, issuer):
+    ident = {
+        'sub': subject,
+        'name': name,
+        'iss': issuer,
+        'iat': get_int_from_datetime(datetime.now(timezone.utc)),
+        'exp': get_int_from_datetime(datetime.now(timezone.utc) + timedelta(hours=1))
+    }
+
+    signing_key = get_signing_key()
+
+    instance = JWT()
+
+    return instance.encode(ident, signing_key, alg='RS256')
+
 async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse:
     try:
         body = req.get_json()
-        logging.info(f'Got body {body}')
-        auth, ident = await login(body['name'], body['pass'])
-        if not auth:
-            return azure.functions.HttpResponse(dumps(ident, default=str), status_code=401)
-        ident['name'] = body['name']    
-        ident['iss'] = 'oodapi'
-        ident['iat'] = get_int_from_datetime(datetime.now(timezone.utc))
-        ident['exp'] = get_int_from_datetime(datetime.now(timezone.utc) + timedelta(hours=1))
-        private_key_data = os.environ['privateRSAKey']
-        signing_key = jwk_from_pem(b64decode(os.environ['privateRSAKey']))
-        instance = JWT()
-        token = { 'token': instance.encode(ident, signing_key, alg='RS256') }
+        logging.debug(f'Got body {body}')
 
-        return azure.functions.HttpResponse(dumps(token, default=str), status_code=200)
+        auth, subject, error = await login(body['name'], body['pass'])
+
+        if not auth:
+            return azure.functions.HttpResponse(dumps({'error': error}, default=str), status_code=401)
+
+        token = get_jwt(subject, body['name'], 'oodapi')
+
+        return azure.functions.HttpResponse(dumps({'token': token}, default=str), status_code=200)
+
     except Exception as e:
         logging.error(f"Failure, {e}")
+
         return azure.functions.HttpResponse(dumps({'fatal': e}, default=str), status_code=500)
 
