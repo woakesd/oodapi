@@ -5,7 +5,7 @@ import aiomysql
 import scrypt
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
-from base64 import b64encode
+from base64 import b64encode, b64decode
 from json import dumps
 from jwt import JWT, jwk_from_pem
 from jwt.utils import get_int_from_datetime
@@ -45,13 +45,12 @@ async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse
         ident['iat'] = get_int_from_datetime(datetime.now(timezone.utc))
         ident['exp'] = get_int_from_datetime(datetime.now(timezone.utc) + timedelta(hours=1))
         private_key_data = os.environ['privateRSAKey']
-        logging.info(f'{private_key_data}')
-        signing_key = jwk_from_pem(os.environ['privateRSAKey'].encode())
+        signing_key = jwk_from_pem(b64decode(os.environ['privateRSAKey']))
         instance = JWT()
         token = { 'token': instance.encode(ident, signing_key, alg='RS256') }
 
         return azure.functions.HttpResponse(dumps(token, default=str), status_code=200)
     except Exception as e:
         logging.error(f"Failure, {e}")
-        return azure.functions.HttpResponse(dumps({'fatal': e, 'key': os.environ['privateRSAKey']}, default=str), status_code=500)
+        return azure.functions.HttpResponse(dumps({'fatal': e}, default=str), status_code=500)
 
