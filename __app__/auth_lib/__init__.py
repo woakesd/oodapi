@@ -2,7 +2,6 @@
 Code used to login users and verify jwt tokens
 """
 import os
-import aiomysql
 import scrypt
 import azure.functions
 import logging
@@ -13,17 +12,13 @@ from jwt import JWT, jwk_from_pem
 from jwt.utils import get_int_from_datetime
 from jwt.exceptions import JWTDecodeError
 
-from __app__.shared.database import  mysql_connection_details
+from __app__.shared.database import get_one_row
 
 async def login(name: str, password: str) -> dict:
     logging.info(f'{name} is attempting to log in')
-    conn_string = os.environ['dbconnection']
-    args = mysql_connection_details(conn_string)
-    async with aiomysql.connect(**args) as conn:
-        async with conn.cursor() as cur:
-            logging.info(f'Checking password for {name}')
-            await cur.execute('select hex(id), salt, pass from user where name = %s', name) 
-            id, salt, passhash = await cur.fetchone()
+
+    logging.info(f'Checking password for {name}')
+    id, salt, passhash = await get_one_row('select hex(id), salt, pass from user where name = %s', name) 
     if passhash != b64encode(scrypt.hash(password, salt, buflen=96)).decode('utf-8'):
         return False, None, 'user or password not recognized'
     return True, f'{id[:8]}-{id[8:12]}-{id[12:16]}-{id[16:20]}-{id[20:]}', None

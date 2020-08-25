@@ -1,11 +1,7 @@
 import os
 import azure.functions
 import logging
-import scrypt
-from base64 import b64encode, b64decode
 from json import dumps
-from jwt import JWT, jwk_from_pem
-from jwt.exceptions import JWTDecodeError
 from __app__.auth_lib import authorization
 
 @authorization

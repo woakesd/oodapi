@@ -1,7 +1,6 @@
 import azure.functions
 import logging
 from json import dumps
-from __app__.auth_lib import authorization
 from __app__.shared.database import get_rows_as_dict_array
 
 async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse:

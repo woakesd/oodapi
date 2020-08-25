@@ -3,8 +3,9 @@ from urllib.parse import urlparse
 import aiomysql
 import logging
 
-def mysql_connection_details(url):
-    par = urlparse(url)
+def mysql_connection_details():
+    conn_string = os.environ['dbconnection']
+    par = urlparse(conn_string)
     return {
         'user': par.username, 
         'password': par.password,
@@ -14,14 +15,18 @@ def mysql_connection_details(url):
     }
 
 async def get_rows_as_dict_array(sql, *args):
-    conn_string = os.environ['dbconnection']
-    logging.info(f'{sql}')
-    logging.info(f'{args}')
-    conn_args = mysql_connection_details(conn_string)
-    async with aiomysql.connect(**conn_args) as conn:
+    logging.debug(f'{sql}')
+    logging.debug(f'{args}')
+    async with aiomysql.connect(**mysql_connection_details()) as conn:
         async with conn.cursor() as cur:
             await cur.execute(sql, args) 
             columns = [column[0] for column in cur.description]
             return [dict(zip(columns, r)) for r in await cur.fetchall()]
                 
-
+async def get_one_row(sql, *args):
+    logging.debug(f'{sql}')
+    logging.debug(f'{args}')
+    async with aiomysql.connect(**mysql_connection_details()) as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(sql, *args)
+            return await cur.fetchone()
