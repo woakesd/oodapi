@@ -6,7 +6,7 @@ from __app__.shared.database import get_rows_as_dict_array
 
 async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse:
     try:
-        rid = req.route_params.get('rid')
+        rid = int(req.route_params.get('rid'))
         logging.debug(rid)
         races = await get_rows_as_dict_array('select * from races_new where rid = %s', rid)
         return azure.functions.HttpResponse(dumps(races, default=str))
