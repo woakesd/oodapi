@@ -11,17 +11,24 @@ from base64 import b64encode, b64decode
 from jwt import JWT, jwk_from_pem
 from jwt.utils import get_int_from_datetime
 from jwt.exceptions import JWTDecodeError
+from uuid import uuid4, UUID
 
-from __app__.shared.database import get_one_row
+from __app__.shared.database import get_one_row, insert_rows
 
 async def login(name: str, password: str) -> dict:
     logging.info(f'{name} is attempting to log in')
 
     logging.info(f'Checking password for {name}')
-    id, salt, passhash = await get_one_row('select hex(id), salt, pass from user where name = %s', name) 
+    id, salt, passhash = await get_one_row('select id, salt, pass from user where name = %s', name) 
     if passhash != b64encode(scrypt.hash(password, salt, buflen=96)).decode('utf-8'):
         return False, None, 'user or password not recognized'
-    return True, f'{id[:8]}-{id[8:12]}-{id[12:16]}-{id[16:20]}-{id[20:]}', None
+
+    subject = uuid4()
+    await insert_rows(
+        'INSERT INTO user_session (id, user_id, expires) VALUES (%s, %s, %s)',
+        [(subject.bytes, id, datetime.now(timezone.utc) + timedelta(hours=1))])
+    
+    return True, f'{subject}', None
  
 def get_signing_key():
     private_key_data = os.environ['privateRSAKey']
@@ -33,7 +40,6 @@ def get_jwt(subject, name, issuer):
         'name': name,
         'iss': issuer,
         'iat': get_int_from_datetime(datetime.now(timezone.utc)),
-        'exp': get_int_from_datetime(datetime.now(timezone.utc) + timedelta(hours=1))
     }
 
     signing_key = get_signing_key()
