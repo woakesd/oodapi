@@ -30,3 +30,12 @@ async def get_one_row(sql, *args):
         async with conn.cursor() as cur:
             await cur.execute(sql, *args)
             return await cur.fetchone()
+
+async def insert_rows(sql, rows) -> int:
+    logging.debug(f'{sql}')
+    logging.debug(f'{rows}')
+    async with aiomysql.connect(**mysql_connection_details()) as conn:
+        async with conn.cursor() as cur:
+            await cur.executemany(sql, rows)
+            await conn.commit()
+            return cur.rowcount
