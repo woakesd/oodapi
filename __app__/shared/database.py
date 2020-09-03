@@ -22,7 +22,7 @@ async def get_rows_as_dict_array(sql, *args):
             await cur.execute(sql, args) 
             columns = [column[0] for column in cur.description]
             return [dict(zip(columns, r)) for r in await cur.fetchall()]
-                
+ 
 async def get_one_row(sql, *args):
     logging.debug(f'{sql}')
     logging.debug(f'{args}')
@@ -31,11 +31,27 @@ async def get_one_row(sql, *args):
             await cur.execute(sql, *args)
             return await cur.fetchone()
 
-async def insert_rows(sql, rows) -> int:
+async def execute_many(sql, rows) -> int:
     logging.debug(f'{sql}')
     logging.debug(f'{rows}')
     async with aiomysql.connect(**mysql_connection_details()) as conn:
         async with conn.cursor() as cur:
             await cur.executemany(sql, rows)
             await conn.commit()
-            return cur.rowcount
+    return cur.rowcount
+
+async def execute_multiple(statements) -> list:
+    logging.debug(f'{statements}')
+    async with aiomysql.connect(**mysql_connection_details()) as conn:
+        async with conn.cursor() as cur:
+            rowcounts = []
+            for statement in statements:
+                sql = statement['sql']
+                rows = statement['rows']
+                await cur.executemany(sql, rows)
+                rowcount = cur.rowcount
+                logging.debug(f'"{sql}" affected {rowcount}')
+                rowcounts.append(cur.rowcount)
+
+            await conn.commit()
+    return rowcounts
