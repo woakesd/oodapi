@@ -3,7 +3,7 @@ import azure.functions
 import logging
 from json import dumps
 
-from __app__.auth_lib import login, get_jwt
+from __app__.shared.auth_lib import login, get_jwt
 
 async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse:
     try:

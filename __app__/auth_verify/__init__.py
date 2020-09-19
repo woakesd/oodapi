@@ -2,7 +2,7 @@ import os
 import azure.functions
 import logging
 from json import dumps
-from __app__.auth_lib import authorization
+from __app__.shared.auth_lib import authorization
 
 @authorization
 async def main(req: azure.functions.HttpRequest, payload) -> azure.functions.HttpResponse:
