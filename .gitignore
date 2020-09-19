@@ -132,3 +132,4 @@ dmypy.json
 azure-functions-core-tools/
 local.settings.json
 keys/
+scratch/
