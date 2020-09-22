@@ -8,11 +8,10 @@
             "name": "req",
             "methods": [
                 "get",
-		"delete",
+                "delete",
                 "post",
-		"put"
-            ],
-            "route": "race/{*rid}"
+                "put"
+            ]
         },
         {
             "type": "http",
