@@ -49,41 +49,46 @@ def get_jwt(subject, name, issuer):
     return instance.encode(ident, signing_key, alg='RS256')
 
 def verify_jwt(token):
-
     signing_key = get_signing_key()
 
     instance = JWT()
 
     return instance.decode(token, signing_key)
 
+async def check_token(req: azure.functions.HttpRequest) -> (bool, dict, int):
+    auth_header = req.headers.get('Authorization', '')
+    logging.debug(auth_header)
+    if not auth_header.startswith('Bearer '):
+        return False, {'reason': 'Not authorized'}, 401 
+    try:
+        payload = verify_jwt(auth_header[7:])
+        logging.debug(payload)
+    except JWTDecodeError as e:
+        return False, {'reason': 'Not authorized'}, 401 
+
+    subject = UUID(payload['sub'])
+    now = (datetime.now(timezone.utc))
+    rowcount = await execute_multiple([
+        { 'sql': 'DELETE FROM user_session WHERE expires < %s', 'rows': [now] },
+        { 'sql': 'UPDATE user_session SET expires = %s WHERE id = %s', 'rows': [( now + timedelta(hours=1), subject.bytes )] }
+    ])
+
+    if rowcount[1] == 0:
+        return False, {'reason': 'Not authorized'}, 401 
+
+    return True, payload, 0
+
 def authorization(func):
     """
     This checks authentication!
     """
-    async def check_token(req):
-        auth_header = req.headers.get('Authorization', '')
-        logging.debug(auth_header)
-        if not auth_header.startswith('Bearer '):
-            return error_return("Not authorized", 401)
-        try:
-            payload = verify_jwt(auth_header[7:])
-            logging.debug(payload)
-        except JWTDecodeError as e:
-            return error_return("Not authorized", 401)
-
-        subject = UUID(payload['sub'])
-        now = (datetime.now(timezone.utc))
-        rowcount = await execute_multiple([
-            { 'sql': 'DELETE FROM user_session WHERE expires < %s', 'rows': [now] },
-            { 'sql': 'UPDATE user_session SET expires = %s WHERE id = %s', 'rows': [( now + timedelta(hours=1), subject.bytes )] }
-        ])
-
-        if rowcount[1] == 0:
-            return error_return("Not authorized", 401)
-
+    async def check_token_wrap(req):
+        authenticated, payload, status_code = await check_token(req)
+        if not authenticated:
+            return error_return(payload['reason'], status_code)
         return await func(req, payload)
 
-    return check_token
+    return check_token_wrap
 
 def error_return(msg, status_code):
     return azure.functions.HttpResponse(dumps({'error': msg}, default=str), status_code=status_code)
