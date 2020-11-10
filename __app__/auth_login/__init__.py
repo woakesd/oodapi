@@ -3,19 +3,19 @@ import azure.functions
 import logging
 from json import dumps
 
-from __app__.shared.auth_lib import login, get_jwt
+from __app__.shared.auth_lib import login, LoginResult, get_jwt
 
 async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse:
     try:
         body = req.get_json()
         logging.debug(f'Got body {body}')
 
-        auth, subject, error = await login(body['name'], body['pass'])
+        login_result: LoginResult = await login(body['name'], body['pass'])
 
-        if not auth:
-            return azure.functions.HttpResponse(dumps({'error': error}, default=str), status_code=401)
+        if not login_result.status:
+            return azure.functions.HttpResponse(dumps({'error': login_status.error_message}, default=str), status_code=401)
 
-        token = get_jwt(subject, body['name'], 'oodapi')
+        token = get_jwt(login_result.subject, body['name'], 'oodapi')
 
         return azure.functions.HttpResponse(dumps({'token': token}, default=str), status_code=200)
 
