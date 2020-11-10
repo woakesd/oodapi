@@ -1,13 +1,13 @@
 import azure.functions
 import logging
 from json import dumps
-from __app__.shared.auth_lib import check_token
+from __app__.shared.auth_lib import authorization
 from __app__.shared.database import get_rows_as_dict_array
 
-async def get_race(params: dict) -> list:
-    rid = int(params.get('rid'))
-    bid = int(params.get('bid', '0'))
-    logging.debug(rid)
+async def get_race(req: azure.functions.HttpRequest) -> object:
+    rid = int(req.params.get('rid', '0'))
+    bid = int(req.params.get('bid', '0'))
+    logging.debug(f'Processing request for race id {rid}, bid {bid}')
     races = await get_rows_as_dict_array('''
         select *
         from races_new
@@ -15,20 +15,16 @@ async def get_race(params: dict) -> list:
         and (bid = %s or %s = 0)''', rid, bid, bid)
     return races
 
-async def add_race(params: dict):
-    authenticated, payload, status_code = check_token(req)
-    if not authenticated:
-        return
+@authorization
+async def add_race(req: azure.functions.HttpRequest, payload: dict) -> object:
     pass
 
-async def delete_race(params: dict):
-    if not authenticated:
-        return
+@authorization
+async def delete_race(req: azure.functions.HttpRequest, payload: dict) -> object:
     pass
 
-async def update_race(params: dict):
-    if not authenticated:
-        return
+@authorization
+async def update_race(req: azure.functions.HttpRequest, payload: dict) -> object:
     pass
 
 method_map = {
@@ -40,7 +36,7 @@ method_map = {
 
 async def main(req: azure.functions.HttpRequest) -> azure.functions.HttpResponse:
     try:
-        ret_value = await method_map.get(req.method, lambda x: None)(req.params)
+        ret_value = await method_map.get(req.method, lambda x: {})(req)
         return azure.functions.HttpResponse(dumps(ret_value, default=str))
     except Exception as e:
         logging.error(f"get races failed, {e}")
